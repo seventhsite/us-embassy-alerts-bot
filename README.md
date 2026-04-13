@@ -1,6 +1,6 @@
 # 🇺🇸 US Embassy Alert Bot
 
-A Telegram bot that monitors U.S. Embassy security alerts worldwide and notifies subscribers about new alerts in real-time.
+A Telegram bot that monitors U.S. Embassy security alert RSS feeds across 170+ countries and notifies subscribers in real-time.
 
 ## Features
 
@@ -16,15 +16,35 @@ A Telegram bot that monitors U.S. Embassy security alerts worldwide and notifies
 
 ### Prerequisites
 
-- Docker & Docker Compose
+- Linux server with Docker & Docker Compose
 - Telegram Bot Token (get from [@BotFather](https://t.me/BotFather))
+- GitHub Actions self-hosted runner (for CI/CD)
 
-### Setup
+### Server Preparation
+
+1. Create the deployment directory and set ownership to the runner user:
+   ```bash
+   sudo mkdir -p /opt/usembassy-alerts-notify
+   sudo chown <runner-user>:<runner-user> /opt/usembassy-alerts-notify
+   ```
+
+2. Create the `.env` file in the deployment directory:
+   ```bash
+   cp .env.example /opt/usembassy-alerts-notify/.env
+   # Edit .env and set your TELEGRAM_BOT_TOKEN
+   ```
+
+3. Create the data directory:
+   ```bash
+   mkdir -p /opt/usembassy-alerts-notify/data
+   ```
+
+### Manual Setup (without CI/CD)
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/usembassy-notify.git
-   cd usembassy-notify
+   git clone https://github.com/seventhsite/us-embassy-alerts-bot.git
+   cd us-embassy-alerts-bot
    ```
 
 2. Create the `.env` file:
@@ -33,17 +53,13 @@ A Telegram bot that monitors U.S. Embassy security alerts worldwide and notifies
    # Edit .env and set your TELEGRAM_BOT_TOKEN
    ```
 
-3. Create the data directory:
+3. Create the data directory and run:
    ```bash
    mkdir -p data
-   ```
-
-4. Build and run:
-   ```bash
    docker compose up -d --build
    ```
 
-5. Check logs:
+4. Check logs:
    ```bash
    docker compose logs -f bot
    ```
@@ -80,11 +96,11 @@ All configuration is done via environment variables (`.env` file):
 
 2. Translate all values in the new file (keep the keys unchanged).
 
-3. Commit and redeploy:
+3. Commit and push (auto-deploys via GitHub Actions):
    ```bash
    git add bot/locales/ru.json
    git commit -m "Add Russian locale"
-   docker compose up -d --build
+   git push
    ```
 
 ## Project Structure
@@ -109,6 +125,9 @@ usembassy-notify/
 │       ├── unsubscribe.py    # /unsubscribe
 │       ├── my_subs.py        # /my
 │       └── latest.py         # /latest <country>
+├── .github/
+│   └── workflows/
+│       └── deploy.yml       # CI/CD: auto-deploy on push to main
 ├── .env.example
 ├── .gitignore
 ├── .dockerignore
@@ -126,6 +145,17 @@ usembassy-notify/
 - **aiohttp** — Async HTTP client
 - **aiosqlite** — Async SQLite wrapper
 - **Docker** — Containerized deployment
+- **GitHub Actions** — CI/CD auto-deploy on push
+
+## Deployment (CI/CD)
+
+The project auto-deploys to `/opt/usembassy-alerts-notify` on every push to `main` via a GitHub Actions self-hosted runner.
+
+**What happens on push:**
+1. Code is synced to the deployment directory (`.env` and `data/` are preserved)
+2. Docker image is rebuilt
+3. Container is restarted
+4. Health check verifies the container is running
 
 ## License
 
