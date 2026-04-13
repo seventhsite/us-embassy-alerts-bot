@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 MAX_BODY_LENGTH = 800
 
 # Browser to impersonate (TLS fingerprint + HTTP/2 settings)
-IMPERSONATE_BROWSER = "chrome135"
+IMPERSONATE_BROWSER = "chrome136"
 
 
 @dataclass

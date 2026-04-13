@@ -175,7 +175,7 @@ async def run_polling_loop(bot: Bot) -> None:
                 delay_between,
             )
 
-            async with AsyncSession(impersonate="chrome135") as session:
+            async with AsyncSession(impersonate="chrome136") as session:
                 for i, code in enumerate(countries):
                     try:
                         new_count = await poll_country(bot, code, session)
