@@ -1,0 +1,49 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        run: |
+          DEPLOY_DIR="/opt/usembassy-alerts-notify"
+
+          # Ensure deployment directory exists
+          sudo mkdir -p "$DEPLOY_DIR"
+          sudo chown $(whoami):$(whoami) "$DEPLOY_DIR"
+
+          # Sync files to deployment directory
+          rsync -av --delete \
+            --exclude '.git' \
+            --exclude '.venv' \
+            --exclude '__pycache__' \
+            --exclude 'data/' \
+            --exclude '.env' \
+            ./ "$DEPLOY_DIR/"
+
+          # Ensure data directory exists (preserves DB across deploys)
+          mkdir -p "$DEPLOY_DIR/data"
+
+          # Build and restart the container
+          cd "$DEPLOY_DIR"
+          docker compose down
+          docker compose up -d --build
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          CONTAINER="usembassy-alerts-bot"
+          STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER" 2>/dev/null || echo "not_found")
+          if [ "$STATUS" != "running" ]; then
+            echo "❌ Container is not running (status: $STATUS)"
+            docker logs "$CONTAINER" --tail 20 2>/dev/null || true
+            exit 1
+          fi
+          echo "✅ Container is running"
