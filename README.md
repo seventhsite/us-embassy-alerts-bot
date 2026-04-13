@@ -1,6 +1,8 @@
 # 🇺🇸 US Embassy Alert Bot
 
-A Telegram bot that monitors U.S. Embassy security alert across 170+ countries and notifies subscribers in real-time.
+A Telegram bot that monitors U.S. Embassy security alerts across 170+ countries and notifies subscribers in real-time.
+
+**🤖 Try it now: [@usembassy_notify_bot](https://t.me/usembassy_notify_bot)**
 
 ## Features
 
