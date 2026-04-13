@@ -15,9 +15,13 @@ jobs:
         run: |
           DEPLOY_DIR="/opt/usembassy-alerts-notify"
 
-          # Ensure deployment directory exists
-          sudo mkdir -p "$DEPLOY_DIR"
-          sudo chown $(whoami):$(whoami) "$DEPLOY_DIR"
+          # Deploy directory must be pre-created with correct ownership:
+          #   sudo mkdir -p /opt/usembassy-alerts-notify
+          #   sudo chown <runner-user>:<runner-user> /opt/usembassy-alerts-notify
+          if [ ! -d "$DEPLOY_DIR" ]; then
+            echo "❌ Deploy directory $DEPLOY_DIR does not exist. Create it manually."
+            exit 1
+          fi
 
           # Sync files to deployment directory
           rsync -av --delete \
