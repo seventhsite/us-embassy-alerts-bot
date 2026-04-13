@@ -22,38 +22,9 @@ MAX_FREE_SUBS: int = int(os.getenv("MAX_FREE_SUBSCRIPTIONS", "3"))
 REQUEST_TIMEOUT: int = 30
 MAX_RETRIES: int = 3
 
-# User-Agent strings to rotate (browser-like headers to avoid CloudFront blocks)
-USER_AGENTS: list[str] = [
-    (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
-    (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
-    (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
-    (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) "
-        "Gecko/20100101 Firefox/134.0"
-    ),
-]
-
-# Default HTTP headers sent with RSS requests
-DEFAULT_HEADERS: dict[str, str] = {
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;"
-        "q=0.9,image/webp,*/*;q=0.8"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Cache-Control": "max-age=0",
-}
+# Proxy URL for RSS requests (required for datacenter IPs blocked by CloudFront)
+# Supports HTTP, HTTPS, SOCKS4, SOCKS5 proxies
+# Examples:
+#   http://user:pass@proxy.example.com:8080
+#   socks5://user:pass@proxy.example.com:1080
+PROXY_URL: str = os.getenv("PROXY_URL", "")

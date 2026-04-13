@@ -14,7 +14,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import URLInputFile
 
 from bot import database as db
-from bot.config import POLL_INTERVAL
+from bot.config import POLL_INTERVAL, PROXY_URL
 from bot.countries import ALL_COUNTRIES
 from bot.i18n import t
 from bot.rss_fetcher import AlertItem, fetch_alerts
@@ -175,7 +175,7 @@ async def run_polling_loop(bot: Bot) -> None:
                 delay_between,
             )
 
-            async with AsyncSession(impersonate="chrome136") as session:
+            async with AsyncSession(impersonate="chrome136", proxy=PROXY_URL or None) as session:
                 for i, code in enumerate(countries):
                     try:
                         new_count = await poll_country(bot, code, session)

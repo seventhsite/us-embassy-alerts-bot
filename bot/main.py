@@ -15,7 +15,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from bot import database as db
-from bot.config import BOT_TOKEN, DB_PATH, LOG_LEVEL
+from bot.config import BOT_TOKEN, DB_PATH, LOG_LEVEL, PROXY_URL
 from bot.handlers import register_all_handlers
 from bot.i18n import load_locales
 from bot.scheduler import run_polling_loop
@@ -56,6 +56,11 @@ async def main() -> None:
     if not BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN is not set!")
         sys.exit(1)
+
+    if PROXY_URL:
+        logger.info("Proxy configured: %s", PROXY_URL.split("@")[-1])  # Log host only, hide credentials
+    else:
+        logger.warning("No PROXY_URL set — requests may be blocked by CloudFront on datacenter IPs")
 
     # Ensure data directory exists
     db_dir = os.path.dirname(DB_PATH) or "."

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import feedparser
 from curl_cffi.requests import AsyncSession
 
-from bot.config import MAX_RETRIES, REQUEST_TIMEOUT
+from bot.config import MAX_RETRIES, PROXY_URL, REQUEST_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +166,10 @@ async def fetch_alerts(
     """
     own_session = session is None
     if own_session:
-        session = AsyncSession(impersonate=IMPERSONATE_BROWSER)
+        session = AsyncSession(
+            impersonate=IMPERSONATE_BROWSER,
+            proxy=PROXY_URL or None,
+        )
 
     try:
         for attempt in range(1, MAX_RETRIES + 1):
