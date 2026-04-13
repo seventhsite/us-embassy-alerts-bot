@@ -88,6 +88,26 @@ All configuration is done via environment variables (`.env` file):
 | `DB_PATH` | `/data/bot.db` | SQLite database path |
 | `LOG_LEVEL` | `INFO` | Logging level |
 | `MAX_FREE_SUBSCRIPTIONS` | `3` | Free subscription limit per user |
+| `PROXY_URL` | — | Proxy for RSS requests (see below) |
+
+## Proxy Setup
+
+U.S. Embassy websites use CloudFront WAF, which blocks requests from datacenter/hosting IPs (Hetzner, AWS, DigitalOcean, etc.). A **residential or mobile proxy** is required when running the bot on a VPS.
+
+**Supported proxy types:** HTTP, HTTPS, SOCKS4, SOCKS5
+
+```env
+# .env examples:
+PROXY_URL=http://user:pass@proxy.example.com:8080
+PROXY_URL=socks5://user:pass@proxy.example.com:1080
+```
+
+**Recommended providers:**
+- [Webshare](https://www.webshare.io/) — from ~$3/mo for residential proxies
+- [IPRoyal](https://iproyal.com/) — residential proxies with pay-per-GB
+- [Bright Data](https://brightdata.com/) — enterprise-grade
+
+> **Note:** Tor (`socks5://127.0.0.1:9050`) is unlikely to work — Tor exit nodes are widely blocked by CloudFront and U.S. government sites.
 
 ## Adding a New Language
 
