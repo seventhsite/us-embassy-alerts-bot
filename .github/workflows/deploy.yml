@@ -51,3 +51,10 @@ jobs:
             exit 1
           fi
           echo "✅ Container is running"
+
+      - name: Cleanup Docker build cache
+        run: |
+          # Remove dangling images left over from previous builds
+          docker image prune -f
+          # Remove unused build cache
+          docker builder prune -f --filter "until=24h"
