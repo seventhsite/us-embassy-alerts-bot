@@ -1,25 +1,28 @@
 """
-RSS feed fetcher with retry logic and CloudFront-friendly headers.
+RSS feed fetcher with retry logic and browser TLS fingerprint impersonation.
 
-Fetches and parses RSS 2.0 feeds from U.S. Embassy websites.
+Uses curl_cffi to impersonate a real browser's TLS/JA3 fingerprint,
+which is required to bypass CloudFront WAF on U.S. Embassy websites.
 """
 
 import asyncio
 import html
 import logging
-import random
 import re
 from dataclasses import dataclass
 
-import aiohttp
 import feedparser
+from curl_cffi.requests import AsyncSession
 
-from bot.config import DEFAULT_HEADERS, MAX_RETRIES, REQUEST_TIMEOUT, USER_AGENTS
+from bot.config import MAX_RETRIES, REQUEST_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
 # Maximum length for the alert body text sent in Telegram messages
 MAX_BODY_LENGTH = 800
+
+# Browser to impersonate (TLS fingerprint + HTTP/2 settings)
+IMPERSONATE_BROWSER = "chrome135"
 
 
 @dataclass
@@ -153,47 +156,43 @@ def _parse_feed(raw_xml: str, country_code: str) -> list[AlertItem]:
 async def fetch_alerts(
     country_code: str,
     feed_url: str,
-    session: aiohttp.ClientSession | None = None,
+    session: AsyncSession | None = None,
 ) -> list[AlertItem]:
     """
     Fetch and parse alerts from a country's RSS feed.
 
-    Includes retry logic with exponential backoff and UA rotation.
+    Uses curl_cffi with browser impersonation to bypass CloudFront WAF.
+    Includes retry logic with exponential backoff.
     """
     own_session = session is None
     if own_session:
-        session = aiohttp.ClientSession()
+        session = AsyncSession(impersonate=IMPERSONATE_BROWSER)
 
     try:
         for attempt in range(1, MAX_RETRIES + 1):
-            headers = {
-                **DEFAULT_HEADERS,
-                "User-Agent": random.choice(USER_AGENTS),
-            }
             try:
-                async with session.get(
+                resp = await session.get(
                     feed_url,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
-                    ssl=True,
-                ) as resp:
-                    if resp.status == 200:
-                        raw = await resp.text()
-                        items = _parse_feed(raw, country_code)
-                        logger.debug(
-                            "Fetched %d alerts for %s", len(items), country_code
-                        )
-                        return items
+                    timeout=REQUEST_TIMEOUT,
+                )
 
-                    logger.warning(
-                        "HTTP %d for %s (attempt %d/%d)",
-                        resp.status,
-                        country_code,
-                        attempt,
-                        MAX_RETRIES,
+                if resp.status_code == 200:
+                    raw = resp.text
+                    items = _parse_feed(raw, country_code)
+                    logger.debug(
+                        "Fetched %d alerts for %s", len(items), country_code
                     )
+                    return items
 
-            except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                logger.warning(
+                    "HTTP %d for %s (attempt %d/%d)",
+                    resp.status_code,
+                    country_code,
+                    attempt,
+                    MAX_RETRIES,
+                )
+
+            except Exception as exc:
                 logger.warning(
                     "Request error for %s (attempt %d/%d): %s",
                     country_code,
@@ -204,7 +203,7 @@ async def fetch_alerts(
 
             # Exponential backoff with jitter
             if attempt < MAX_RETRIES:
-                delay = (2**attempt) + random.uniform(0, 1)
+                delay = (2**attempt) + (asyncio.get_event_loop().time() % 1)
                 await asyncio.sleep(delay)
 
         logger.error("All %d attempts failed for %s", MAX_RETRIES, country_code)

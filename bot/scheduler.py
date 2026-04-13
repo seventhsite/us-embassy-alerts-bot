@@ -8,7 +8,7 @@ are checked simultaneously. Sends new alerts to subscribers.
 import asyncio
 import logging
 
-import aiohttp
+from curl_cffi.requests import AsyncSession
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import URLInputFile
@@ -99,7 +99,7 @@ async def _send_alert_to_user(
 async def poll_country(
     bot: Bot,
     country_code: str,
-    session: aiohttp.ClientSession,
+    session: AsyncSession,
 ) -> int:
     """
     Poll a single country's RSS feed and notify subscribers of new alerts.
@@ -175,7 +175,7 @@ async def run_polling_loop(bot: Bot) -> None:
                 delay_between,
             )
 
-            async with aiohttp.ClientSession() as session:
+            async with AsyncSession(impersonate="chrome135") as session:
                 for i, code in enumerate(countries):
                     try:
                         new_count = await poll_country(bot, code, session)
