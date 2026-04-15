@@ -15,7 +15,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from bot import database as db
-from bot.config import BOT_TOKEN, DB_PATH, LOG_LEVEL, RSS_PROXY_URL
+from bot.config import BOT_TOKEN, DB_PATH, LOG_LEVEL, RSS_PROXY_KEY, RSS_PROXY_URL
 from bot.handlers import register_all_handlers
 from bot.i18n import load_locales
 from bot.scheduler import run_polling_loop
@@ -59,6 +59,10 @@ async def main() -> None:
 
     if not RSS_PROXY_URL:
         logger.error("RSS_PROXY_URL is not set!")
+        sys.exit(1)
+
+    if not RSS_PROXY_KEY:
+        logger.error("RSS_PROXY_KEY is not set!")
         sys.exit(1)
 
     logger.info("RSS proxy: %s", RSS_PROXY_URL)
