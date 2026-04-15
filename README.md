@@ -97,7 +97,18 @@ All configuration is done via environment variables (`.env` file):
 U.S. Embassy websites use CloudFront WAF which blocks requests from datacenter IPs.
 The bot routes RSS requests through a Cloudflare Worker that acts as a proxy.
 
-### Deploy the Worker
+### Option A: Deploy via Cloudflare Dashboard (no CLI needed)
+
+1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Start with Hello World!**
+2. Name: `usembassy-rss-proxy`, click **Deploy**
+3. Click **Edit Code**, replace all content with the code from `cloudflare-worker/src/index.js`, click **Deploy**
+4. Go to worker **Settings** → **Variables and Secrets** → **Add**:
+   - Type: `Secret`
+   - Name: `PROXY_KEY`
+   - Value: a random key (generate with `openssl rand -hex 32`)
+5. Click **Deploy**
+
+### Option B: Deploy via Wrangler CLI
 
 1. Install Wrangler CLI:
    ```bash
@@ -113,20 +124,18 @@ The bot routes RSS requests through a Cloudflare Worker that acts as a proxy.
 
 3. Set the secret API key:
    ```bash
-   # Generate a random key
    export PROXY_KEY=$(openssl rand -hex 32)
    echo "Your PROXY_KEY: $PROXY_KEY"
-
-   # Set it as a Cloudflare Worker secret
    wrangler secret put PROXY_KEY
-   # Paste the key when prompted
    ```
 
-4. Add to your `.env`:
-   ```env
-   RSS_PROXY_URL=https://usembassy-rss-proxy.YOUR_SUBDOMAIN.workers.dev
-   RSS_PROXY_KEY=<your generated key>
-   ```
+### Configure the Bot
+
+Add to your `.env`:
+```env
+RSS_PROXY_URL=https://usembassy-rss-proxy.YOUR_SUBDOMAIN.workers.dev
+RSS_PROXY_KEY=<your generated key>
+```
 
 > **Free tier:** Cloudflare Workers include 100,000 requests/day for free — more than enough for this bot.
 
@@ -177,6 +186,7 @@ usembassy-notify/
 ├── .env.example
 ├── .gitignore
 ├── .dockerignore
+├── AGENTS.md              # AI agent instructions
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt

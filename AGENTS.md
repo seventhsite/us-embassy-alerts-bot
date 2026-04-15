@@ -91,6 +91,7 @@ docker compose logs -f
 
 ### Deploying the Cloudflare Worker
 
+**Via CLI:**
 ```bash
 cd cloudflare-worker
 npm install -g wrangler
@@ -98,6 +99,8 @@ wrangler login
 wrangler deploy
 wrangler secret put PROXY_KEY  # Set the API key
 ```
+
+**Via Dashboard:** Go to dash.cloudflare.com → Workers & Pages → Create → paste code from `cloudflare-worker/src/index.js`. Add `PROXY_KEY` secret in Settings → Variables and Secrets.
 
 ## Deployment
 
