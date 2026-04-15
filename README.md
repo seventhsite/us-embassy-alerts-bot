@@ -20,6 +20,7 @@ A Telegram bot that monitors U.S. Embassy security alerts across 170+ countries 
 
 - Linux server with Docker & Docker Compose
 - Telegram Bot Token (get from [@BotFather](https://t.me/BotFather))
+- Cloudflare account (free tier, for RSS proxy worker)
 - GitHub Actions self-hosted runner (for CI/CD)
 
 ### Server Preparation
@@ -88,6 +89,46 @@ All configuration is done via environment variables (`.env` file):
 | `DB_PATH` | `/data/bot.db` | SQLite database path |
 | `LOG_LEVEL` | `INFO` | Logging level |
 | `MAX_FREE_SUBSCRIPTIONS` | `3` | Free subscription limit per user |
+| `RSS_PROXY_URL` | — | **Required.** Cloudflare Worker URL (see below) |
+| `RSS_PROXY_KEY` | — | **Required.** Secret key for the RSS proxy |
+
+## Cloudflare Worker (RSS Proxy)
+
+U.S. Embassy websites use CloudFront WAF which blocks requests from datacenter IPs.
+The bot routes RSS requests through a Cloudflare Worker that acts as a proxy.
+
+### Deploy the Worker
+
+1. Install Wrangler CLI:
+   ```bash
+   npm install -g wrangler
+   wrangler login
+   ```
+
+2. Deploy the worker:
+   ```bash
+   cd cloudflare-worker
+   wrangler deploy
+   ```
+
+3. Set the secret API key:
+   ```bash
+   # Generate a random key
+   export PROXY_KEY=$(openssl rand -hex 32)
+   echo "Your PROXY_KEY: $PROXY_KEY"
+
+   # Set it as a Cloudflare Worker secret
+   wrangler secret put PROXY_KEY
+   # Paste the key when prompted
+   ```
+
+4. Add to your `.env`:
+   ```env
+   RSS_PROXY_URL=https://usembassy-rss-proxy.YOUR_SUBDOMAIN.workers.dev
+   RSS_PROXY_KEY=<your generated key>
+   ```
+
+> **Free tier:** Cloudflare Workers include 100,000 requests/day for free — more than enough for this bot.
 
 ## Adding a New Language
 
@@ -115,8 +156,7 @@ usembassy-notify/
 │   ├── config.py             # Environment configuration
 │   ├── database.py           # SQLite layer (aiosqlite)
 │   ├── countries.py          # 170+ countries with codes & flags
-│   ├── rss_fetcher.py        # RSS parser (Playwright + feedparser)
-│   ├── browser.py            # Shared headless Chromium instance
+│   ├── rss_fetcher.py        # RSS fetcher (via CF Worker proxy)
 │   ├── scheduler.py          # Staggered RSS polling loop
 │   ├── i18n.py               # Internationalization module
 │   ├── locales/
@@ -128,6 +168,9 @@ usembassy-notify/
 │       ├── unsubscribe.py    # /unsubscribe
 │       ├── my_subs.py        # /my
 │       └── latest.py         # /latest <country>
+├── cloudflare-worker/        # RSS proxy (Cloudflare Worker)
+│   ├── src/index.js          # Worker source code
+│   └── wrangler.toml         # Wrangler configuration
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml       # CI/CD: auto-deploy on push to main
@@ -144,8 +187,9 @@ usembassy-notify/
 
 - **Python 3.13** — Latest stable Python
 - **aiogram 3.27** — Modern async Telegram Bot framework
-- **Playwright** — Headless Chromium for CloudFront WAF bypass
+- **Cloudflare Workers** — RSS proxy to bypass CloudFront WAF
 - **feedparser** — RSS 2.0 parsing
+- **aiohttp** — Async HTTP client
 - **aiosqlite** — Async SQLite wrapper
 - **Docker** — Containerized deployment
 - **GitHub Actions** — CI/CD auto-deploy on push

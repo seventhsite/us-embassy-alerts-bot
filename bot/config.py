@@ -21,3 +21,8 @@ MAX_FREE_SUBS: int = int(os.getenv("MAX_FREE_SUBSCRIPTIONS", "3"))
 # HTTP request settings
 REQUEST_TIMEOUT: int = 30
 MAX_RETRIES: int = 3
+
+# Cloudflare Worker RSS proxy (required)
+# The worker proxies requests to *.usembassy.gov bypassing CloudFront WAF.
+RSS_PROXY_URL: str = os.getenv("RSS_PROXY_URL", "")
+RSS_PROXY_KEY: str = os.getenv("RSS_PROXY_KEY", "")

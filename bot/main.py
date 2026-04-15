@@ -15,7 +15,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from bot import database as db
-from bot.config import BOT_TOKEN, DB_PATH, LOG_LEVEL
+from bot.config import BOT_TOKEN, DB_PATH, LOG_LEVEL, RSS_PROXY_URL
 from bot.handlers import register_all_handlers
 from bot.i18n import load_locales
 from bot.scheduler import run_polling_loop
@@ -44,8 +44,6 @@ async def on_startup(bot: Bot) -> None:
 
 async def on_shutdown(bot: Bot) -> None:
     """Actions to perform when the bot shuts down."""
-    from bot.browser import close_browser
-    await close_browser()
     await db.close_db()
     logging.getLogger(__name__).info("Bot stopped")
 
@@ -59,6 +57,11 @@ async def main() -> None:
         logger.error("TELEGRAM_BOT_TOKEN is not set!")
         sys.exit(1)
 
+    if not RSS_PROXY_URL:
+        logger.error("RSS_PROXY_URL is not set!")
+        sys.exit(1)
+
+    logger.info("RSS proxy: %s", RSS_PROXY_URL)
 
     # Ensure data directory exists
     db_dir = os.path.dirname(DB_PATH) or "."

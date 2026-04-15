@@ -1,8 +1,8 @@
 """
-RSS feed fetcher using headless Chromium via Playwright.
+RSS feed fetcher with retry logic.
 
-Uses a real browser to bypass CloudFront WAF TLS fingerprinting
-and IP-based blocks on U.S. Embassy websites.
+Fetches RSS feeds via a Cloudflare Worker proxy to bypass
+CloudFront WAF blocking on U.S. Embassy websites.
 """
 
 import asyncio
@@ -11,10 +11,10 @@ import logging
 import re
 from dataclasses import dataclass
 
+import aiohttp
 import feedparser
 
-from bot.browser import get_browser
-from bot.config import MAX_RETRIES, REQUEST_TIMEOUT
+from bot.config import MAX_RETRIES, REQUEST_TIMEOUT, RSS_PROXY_KEY, RSS_PROXY_URL
 
 logger = logging.getLogger(__name__)
 
@@ -150,62 +150,75 @@ def _parse_feed(raw_xml: str, country_code: str) -> list[AlertItem]:
     return items
 
 
+def _build_proxy_url(feed_url: str) -> str:
+    """Build the Cloudflare Worker proxy URL for a given feed URL."""
+    base = RSS_PROXY_URL.rstrip("/")
+    return f"{base}/?url={feed_url}"
+
+
 async def fetch_alerts(
     country_code: str,
     feed_url: str,
+    session: aiohttp.ClientSession | None = None,
 ) -> list[AlertItem]:
     """
     Fetch and parse alerts from a country's RSS feed.
 
-    Uses headless Chromium to bypass CloudFront WAF.
+    Routes requests through a Cloudflare Worker proxy to bypass CloudFront WAF.
     Includes retry logic with exponential backoff.
     """
-    browser = await get_browser()
+    if not RSS_PROXY_URL:
+        logger.error("RSS_PROXY_URL is not configured!")
+        return []
 
-    for attempt in range(1, MAX_RETRIES + 1):
-        page = None
-        try:
-            page = await browser.new_page()
-            resp = await page.goto(
-                feed_url,
-                wait_until="commit",
-                timeout=REQUEST_TIMEOUT * 1000,
-            )
+    own_session = session is None
+    if own_session:
+        session = aiohttp.ClientSession()
 
-            if resp and resp.status == 200:
-                raw = await page.content()
-                items = _parse_feed(raw, country_code)
-                logger.debug(
-                    "Fetched %d alerts for %s", len(items), country_code
+    proxy_url = _build_proxy_url(feed_url)
+    headers = {"X-Proxy-Key": RSS_PROXY_KEY}
+
+    try:
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                async with session.get(
+                    proxy_url,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
+                ) as resp:
+                    if resp.status == 200:
+                        raw = await resp.text()
+                        items = _parse_feed(raw, country_code)
+                        logger.debug(
+                            "Fetched %d alerts for %s", len(items), country_code
+                        )
+                        return items
+
+                    logger.warning(
+                        "HTTP %d for %s (attempt %d/%d)",
+                        resp.status,
+                        country_code,
+                        attempt,
+                        MAX_RETRIES,
+                    )
+
+            except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                logger.warning(
+                    "Request error for %s (attempt %d/%d): %s",
+                    country_code,
+                    attempt,
+                    MAX_RETRIES,
+                    exc,
                 )
-                return items
 
-            status = resp.status if resp else "no response"
-            logger.warning(
-                "HTTP %s for %s (attempt %d/%d)",
-                status,
-                country_code,
-                attempt,
-                MAX_RETRIES,
-            )
+            # Exponential backoff with jitter
+            if attempt < MAX_RETRIES:
+                delay = (2**attempt) + (asyncio.get_event_loop().time() % 1)
+                await asyncio.sleep(delay)
 
-        except Exception as exc:
-            logger.warning(
-                "Request error for %s (attempt %d/%d): %s",
-                country_code,
-                attempt,
-                MAX_RETRIES,
-                exc,
-            )
+        logger.error("All %d attempts failed for %s", MAX_RETRIES, country_code)
+        return []
 
-        finally:
-            if page:
-                await page.close()
-
-        # Exponential backoff
-        if attempt < MAX_RETRIES:
-            delay = 2**attempt
-            await asyncio.sleep(delay)
-
-    logger.error("All %d attempts failed for %s", MAX_RETRIES, country_code)
-    return []
+    finally:
+        if own_session:
+            await session.close()
