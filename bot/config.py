@@ -21,10 +21,3 @@ MAX_FREE_SUBS: int = int(os.getenv("MAX_FREE_SUBSCRIPTIONS", "3"))
 # HTTP request settings
 REQUEST_TIMEOUT: int = 30
 MAX_RETRIES: int = 3
-
-# Proxy URL for RSS requests (required for datacenter IPs blocked by CloudFront)
-# Supports HTTP, HTTPS, SOCKS4, SOCKS5 proxies
-# Examples:
-#   http://user:pass@proxy.example.com:8080
-#   socks5://user:pass@proxy.example.com:1080
-PROXY_URL: str = os.getenv("PROXY_URL", "")

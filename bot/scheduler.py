@@ -8,13 +8,12 @@ are checked simultaneously. Sends new alerts to subscribers.
 import asyncio
 import logging
 
-from curl_cffi.requests import AsyncSession
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import URLInputFile
 
 from bot import database as db
-from bot.config import POLL_INTERVAL, PROXY_URL
+from bot.config import POLL_INTERVAL
 from bot.countries import ALL_COUNTRIES
 from bot.i18n import t
 from bot.rss_fetcher import AlertItem, fetch_alerts
@@ -99,7 +98,6 @@ async def _send_alert_to_user(
 async def poll_country(
     bot: Bot,
     country_code: str,
-    session: AsyncSession,
 ) -> int:
     """
     Poll a single country's RSS feed and notify subscribers of new alerts.
@@ -111,7 +109,7 @@ async def poll_country(
         logger.warning("Unknown country code: %s", country_code)
         return 0
 
-    items = await fetch_alerts(country_code, country.feed_url, session)
+    items = await fetch_alerts(country_code, country.feed_url)
     if not items:
         return 0
 
@@ -175,20 +173,19 @@ async def run_polling_loop(bot: Bot) -> None:
                 delay_between,
             )
 
-            async with AsyncSession(impersonate="chrome136", proxy=PROXY_URL or None) as session:
-                for i, code in enumerate(countries):
-                    try:
-                        new_count = await poll_country(bot, code, session)
-                        if new_count:
-                            logger.info(
-                                "Found %d new alert(s) for %s", new_count, code
-                            )
-                    except Exception as exc:
-                        logger.error("Error polling %s: %s", code, exc)
+            for i, code in enumerate(countries):
+                try:
+                    new_count = await poll_country(bot, code)
+                    if new_count:
+                        logger.info(
+                            "Found %d new alert(s) for %s", new_count, code
+                        )
+                except Exception as exc:
+                    logger.error("Error polling %s: %s", code, exc)
 
-                    # Wait before polling next country (staggered approach)
-                    if i < len(countries) - 1 and delay_between > 0:
-                        await asyncio.sleep(delay_between)
+                # Wait before polling next country (staggered approach)
+                if i < len(countries) - 1 and delay_between > 0:
+                    await asyncio.sleep(delay_between)
 
             # Periodic cleanup of old seen alerts (every cycle)
             try:
