@@ -12,4 +12,5 @@ data/
 .idea/
 .vscode/
 docker-compose.override.yml
+cloudflare-worker/
 LICENSE
