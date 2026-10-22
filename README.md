@@ -141,9 +141,10 @@ RSS_PROXY_KEY=<your generated key>
 
 ## Automatic Updates
 
-`update.sh` pulls the latest `python:3-slim`, rebuilds the image and recreates the
-container if it changed (rolling back if the new one fails to become healthy). It also
-reports pinned packages in `requirements.txt` that have newer releases. Run it weekly
+`update.sh` pulls the latest base image (new Python patch releases), rebuilds the image
+and recreates the container if it changed (rolling back if the new one fails to become
+healthy). It also reports pinned packages in `requirements.txt` that have newer releases,
+and a new Python minor (`python:3-slim`) once all pinned packages install on it. Run it weekly
 from cron on the deploy host:
 
 ```cron
@@ -210,7 +211,7 @@ usembassy-notify/
 
 ## Tech Stack
 
-- **Python 3** — latest stable release (`python:3-slim`, pulled on every build)
+- **Python 3.14** — newest release supported by all dependencies (`update.sh` reports when the next one is)
 - **aiogram 3.27** — Modern async Telegram Bot framework
 - **Cloudflare Workers** — RSS proxy to bypass CloudFront WAF
 - **feedparser** — RSS 2.0 parsing

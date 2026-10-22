@@ -3,7 +3,7 @@ services:
     build:
       context: .
       # Always pull the base image, otherwise BuildKit keeps reusing a cached
-      # python:3-slim and Python never moves past the version of the first build
+      # base and Python never moves past the patch release of the first build
       pull: true
     container_name: usembassy-alerts-bot
     env_file: .env

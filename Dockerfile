@@ -1,5 +1,7 @@
-# Floating tag: latest stable Python 3.x (base is pulled on every build, see compose)
-FROM python:3-slim
+# Newest Python minor that all pinned dependencies support. Patch releases
+# arrive automatically (base is pulled on every build, see compose); update.sh
+# reports when a newer minor becomes installable so this line can be bumped.
+FROM python:3.14-slim
 
 WORKDIR /app
 

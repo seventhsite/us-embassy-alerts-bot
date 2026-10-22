@@ -35,10 +35,11 @@ jobs:
           # Ensure data directory exists (preserves DB across deploys)
           mkdir -p "$DEPLOY_DIR/data"
 
-          # Build and restart the container
+          # Build first: a failed build must not take the running bot down
           cd "$DEPLOY_DIR"
+          docker compose build
           docker compose down
-          docker compose up -d --build
+          docker compose up -d
 
       - name: Verify deployment
         run: |

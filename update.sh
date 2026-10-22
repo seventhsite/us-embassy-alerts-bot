@@ -7,6 +7,9 @@
 #   3. Reports pinned packages from requirements.txt that have newer releases.
 #      requirements.txt is managed in the repo (CI overwrites local changes),
 #      so pins are only reported, not bumped.
+#   4. Reports when the latest Python (python:3-slim) is newer than the one in
+#      Dockerfile and all pinned packages install on it. Dependencies often lag
+#      behind a new Python minor, so FROM is bumped in the repo, not here.
 #
 # Code itself is deployed by GitHub Actions (.github/workflows/deploy.yml).
 #
@@ -27,6 +30,8 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$PROJECT_DIR/.env"
 STATE_DIR="$PROJECT_DIR/data"
 OUTDATED_STATE="$STATE_DIR/.outdated-packages"
+PYTHON_STATE="$STATE_DIR/.latest-python"
+LATEST_BASE="python:3-slim"
 LOCK_FILE="$STATE_DIR/.update.lock"
 SERVICE="bot"
 CONTAINER="usembassy-alerts-bot"
@@ -286,6 +291,35 @@ if outdated=$(docker run --rm --entrypoint python "$IMAGE" -c "$check_script" 2>
 else
     log_warning "Failed to check outdated packages: $(cat "$TMP_DIR/outdated.err")"
     send_notification "<b>Failed to check outdated packages</b>"$'\n'"<pre>$(tail -c 1500 "$TMP_DIR/outdated.err" | html_escape)</pre>" warning
+fi
+
+# 5. Check whether the latest Python minor is supported by pinned packages
+CURRENT_STEP="check latest python"
+python_minor() {
+    docker run --rm --entrypoint python "$1" -c 'import sys; print("%d.%d" % sys.version_info[:2])'
+}
+if ! latest_log=$(docker pull "$LATEST_BASE" 2>&1); then
+    log_warning "Failed to pull $LATEST_BASE: $latest_log"
+else
+    current_py=$(python_minor "$BASE_IMAGE")
+    latest_py=$(python_minor "$LATEST_BASE")
+    if [ "$current_py" = "$latest_py" ]; then
+        status="current"
+    elif docker run --rm -v "$PROJECT_DIR/requirements.txt:/tmp/requirements.txt:ro" "$LATEST_BASE" \
+        pip install --dry-run --quiet --no-cache-dir --disable-pip-version-check \
+        --root-user-action=ignore -r /tmp/requirements.txt >"$TMP_DIR/latest-python.log" 2>&1; then
+        status="supported $latest_py"
+    else
+        status="unsupported $latest_py"
+    fi
+    previous=$(cat "$PYTHON_STATE" 2>/dev/null || true)
+    log_info "Python in Dockerfile: $current_py, latest: $latest_py ($status)"
+    if [ "$status" != "$previous" ]; then
+        if [ "${status%% *}" = "supported" ]; then
+            send_notification "<b>Python $latest_py is supported by all pinned packages</b>"$'\n'"Bump <code>FROM python:$current_py-slim</code> in <code>Dockerfile</code> in the repo." warning
+        fi
+        printf '%s' "$status" >"$PYTHON_STATE"
+    fi
 fi
 
 log_info "Update completed"
