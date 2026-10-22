@@ -4,7 +4,7 @@ This document provides context for AI coding agents working on this project.
 
 ## Project Overview
 
-A Telegram bot that monitors U.S. Embassy security alerts (RSS feeds) across 170+ countries and notifies subscribers in real-time. Built with Python 3.13, aiogram 3.27, and deployed via Docker.
+A Telegram bot that monitors U.S. Embassy security alerts (RSS feeds) across 170+ countries and notifies subscribers in real-time. Built with Python 3 (latest stable), aiogram 3.27, and deployed via Docker.
 
 ## Architecture
 

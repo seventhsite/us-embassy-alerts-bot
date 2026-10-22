@@ -10,15 +10,16 @@
 #
 # Code itself is deployed by GitHub Actions (.github/workflows/deploy.yml).
 #
-# Notifications go to the Zabbix Telegram bot: ZABBIX_BOT_TOKEN and
-# ZABBIX_CHAT_ID in .env. Only these two variables are read from .env —
-# TELEGRAM_BOT_TOKEN there belongs to the alerts bot itself.
+# Notifications go to a separate monitoring Telegram bot: MONITORING_BOT_TOKEN
+# and MONITORING_CHAT_ID in .env. Only these two variables are read from .env —
+# TELEGRAM_BOT_TOKEN there belongs to the alerts bot itself. A message is sent
+# only when something changed or failed; errors also go to stderr.
 #
 # Usage: ./update.sh [--force]
 #   --force  rebuild without cache and recreate the container even if unchanged
 #
-# Cron example (daily at 05:00):
-#   0 5 * * * /opt/usembassy-alerts-notify/update.sh >/dev/null 2>&1
+# Cron example (weekly, Monday 05:45; stderr is left for cron mail):
+#   45 5 * * 1 /path/to/deploy/update.sh >/dev/null
 
 set -Eeuo pipefail
 
@@ -65,16 +66,16 @@ html_escape() {
     sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
 }
 
-ZABBIX_BOT_TOKEN="${ZABBIX_BOT_TOKEN:-$(read_env_var ZABBIX_BOT_TOKEN)}"
-ZABBIX_CHAT_ID="${ZABBIX_CHAT_ID:-$(read_env_var ZABBIX_CHAT_ID)}"
+MONITORING_BOT_TOKEN="${MONITORING_BOT_TOKEN:-$(read_env_var MONITORING_BOT_TOKEN)}"
+MONITORING_CHAT_ID="${MONITORING_CHAT_ID:-$(read_env_var MONITORING_CHAT_ID)}"
 
-# Sends a message to the Zabbix Telegram bot. Level: ok | warning | error
+# Sends a message to the monitoring Telegram bot. Level: ok | warning | error
 send_notification() {
     local message="$1"
     local level="${2:-ok}"
 
-    if [ -z "$ZABBIX_BOT_TOKEN" ] || [ -z "$ZABBIX_CHAT_ID" ]; then
-        log_warning "ZABBIX_BOT_TOKEN/ZABBIX_CHAT_ID not set. Skipping notification."
+    if [ -z "$MONITORING_BOT_TOKEN" ] || [ -z "$MONITORING_CHAT_ID" ]; then
+        log_warning "MONITORING_BOT_TOKEN/MONITORING_CHAT_ID not set. Skipping notification."
         return 0
     fi
 
@@ -93,11 +94,11 @@ send_notification() {
     local http_code
     if ! http_code=$(curl -sS -o "$response_file" -w '%{http_code}' \
         --connect-timeout 10 --max-time 30 \
-        --data-urlencode "chat_id=$ZABBIX_CHAT_ID" \
+        --data-urlencode "chat_id=$MONITORING_CHAT_ID" \
         --data-urlencode "text=$text" \
         -d "parse_mode=HTML" \
         -d "disable_web_page_preview=true" \
-        "https://api.telegram.org/bot$ZABBIX_BOT_TOKEN/sendMessage"); then
+        "https://api.telegram.org/bot$MONITORING_BOT_TOKEN/sendMessage"); then
         log_error "Failed to send Telegram notification (curl failed)"
         return 0
     fi

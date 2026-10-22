@@ -1,4 +1,5 @@
-FROM python:3.13-slim
+# Floating tag: latest stable Python 3.x (base is pulled on every build, see compose)
+FROM python:3-slim
 
 WORKDIR /app
 

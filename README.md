@@ -139,6 +139,20 @@ RSS_PROXY_KEY=<your generated key>
 
 > **Free tier:** Cloudflare Workers include 100,000 requests/day for free — more than enough for this bot.
 
+## Automatic Updates
+
+`update.sh` pulls the latest `python:3-slim`, rebuilds the image and recreates the
+container if it changed (rolling back if the new one fails to become healthy). It also
+reports pinned packages in `requirements.txt` that have newer releases. Run it weekly
+from cron on the deploy host:
+
+```cron
+45 5 * * 1 /path/to/deploy/update.sh >/dev/null
+```
+
+Set `MONITORING_BOT_TOKEN` and `MONITORING_CHAT_ID` in `.env` to get a Telegram message
+when the bot was updated or something failed; quiet runs send nothing.
+
 ## Adding a New Language
 
 1. Copy the English locale file:
@@ -190,12 +204,13 @@ usembassy-notify/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
+├── update.sh              # Weekly base image rebuild + outdated pins report
 └── README.md
 ```
 
 ## Tech Stack
 
-- **Python 3.13** — Latest stable Python
+- **Python 3** — latest stable release (`python:3-slim`, pulled on every build)
 - **aiogram 3.27** — Modern async Telegram Bot framework
 - **Cloudflare Workers** — RSS proxy to bypass CloudFront WAF
 - **feedparser** — RSS 2.0 parsing
